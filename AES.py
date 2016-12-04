@@ -42,95 +42,199 @@ class AES:
 			[0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61],
 			[0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d]]
 
+	# Round constant words
+	Rcon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91]
 
 	def __init__(self, key, bit_size = 128):
 		self.bit_size = bit_size
-		print(key)
 		self.key = string_to_bytes(key)
-		#2b 7e 15 16 28 ae d2 a6 ab f7 15 88 09 cf 4f 3c
-		# ------ Temporary key ------
-		self.key = []
-		self.key.append(int('2b', 16))
-		self.key.append(int('7e', 16))
-		self.key.append(int('15', 16))
-		self.key.append(int('16', 16))
-		self.key.append(int('28', 16))
-		self.key.append(int('ae', 16))
-		self.key.append(int('d2', 16))
-		self.key.append(int('a6', 16))
-		self.key.append(int('ab', 16))
-		self.key.append(int('f7', 16))
-		self.key.append(int('15', 16))
-		self.key.append(int('88', 16))
-		self.key.append(int('09', 16))
-		self.key.append(int('cf', 16))
-		self.key.append(int('4f', 16))
-		self.key.append(int('3c', 16))
-
-		for i in self.key:
-			print(hex(i), end=' ')
-
-		print()
-		print("0x2b 0x7e 0x15 0x16 0x28 0xae 0xd2 0xa6 0xab 0xf7 0x15 0x88 0x09 0xcf 0x4f 0x3c")
-		# ------ Temporary key ------
 
 		self.Nb = 4			# Number of Columns
+
+		if len(self.key) != 16 and len(self.key) != 24 and len(self.key) != 32:
+			 raise ValueError('Invalid key size')
 
 		if bit_size == 128:
 			self.Nk = 4		# 4 32-bit words for key
 			self.Nr = 10	# 10 rounds for 128 bit key size
 
 	def encrypt(self, message):
+		print(len(message))
 		message = string_to_bytes(message)
+		print(len(message))
+		print(type(message))
+		print(message)
 
-		# ------ Temporary message ------
-		# 32 43 f6 a8 88 5a 30 8d 31 31 98 a2 e0 37 07 34
-		message = []
-		message.append(int('32', 16))
-		message.append(int('43', 16))
-		message.append(int('f6', 16))
-		message.append(int('a8', 16))
-		message.append(int('88', 16))
-		message.append(int('5a', 16))
-		message.append(int('30', 16))
-		message.append(int('8d', 16))
-		message.append(int('31', 16))
-		message.append(int('31', 16))
-		message.append(int('98', 16))
-		message.append(int('a2', 16))
-		message.append(int('e0', 16))
-		message.append(int('37', 16))
-		message.append(int('07', 16))
-		message.append(int('34', 16))
+		w = self.KeyExpansion()
+		message = self.pad(message)
+		print(len(message))
+		print(message)
 
-		for i in message:
-			print(hex(i), end=' ')
+		cipher_text = ''
+		for bits_128 in range(0, len(message), 16):			
+			cipher_text += bytes_to_string(self.cipher(message[bits_128: (bits_128 + 16)], w))
 
-		print()
-		print("0x32 0x43 0xf6 0xa8 0x88 0x5a 0x30 0x8d 0x31 0x31 0x98 0xa2 0xe0 0x37 0x07 0x34")
-		# ------ Temporary message ------
-		w = []
-		self.cipher(message, self.key)
+		return cipher_text
+
+
+	def decrypt(self, cipher_text):
+		cipher_text = string_to_bytes(cipher_text)
+
+		w = self.KeyExpansion()
+
+		plain_text = ''
+		for bits_128 in range(0, len(cipher_text), 16):
+			plain_text += bytes_to_string(self.plain(cipher_text[bits_128: (bits_128 + 16)], w)) 
+
+		plain_text = self.unpad(plain_text)
+
+		return plain_text
+
+	# Padding is implemented using RKCS#7 as described in this post:
+	# https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS7
+	def pad(self, message):
+		extra = 16 - (len(message) % 16)
+		if extra == 0:
+			# If message is a multiple of 128 bits, pad with a block of f to indicate padding
+			message += [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+		elif extra == 1:
+			# Padd with the padding value
+			message += [1]
+		elif extra == 2:
+			message += [2, 2]
+		elif extra == 3:
+			message += [3, 3, 3]
+		elif extra == 4:
+			message += [4, 4, 4, 4]
+		elif extra == 5:
+			message += [5, 5, 5, 5, 5]
+		elif extra == 6:
+			message += [6, 6, 6, 6, 6, 6]
+		elif extra == 7:
+			message += [7, 7, 7, 7, 7, 7, 7]
+		elif extra == 8:
+			message += [8, 8, 8, 8, 8, 8, 8, 8]
+		elif extra == 9:
+			message += [9, 9, 9, 9, 9, 9, 9, 9, 9]
+		elif extra == 10:
+			message += [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+		elif extra == 11:
+			message += [11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
+		elif extra == 12:
+			message += [12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12]
+		elif extra == 13:
+			message += [13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13]
+		elif extra == 14:
+			message += [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14]
+		elif extra == 15:
+			message += [15 ,15, 15 ,15, 15 ,15, 15 ,15, 15 ,15, 15 ,15, 15 ,15, 15]
+		return message
+
+	def unpad(self, message):
+		extra = message[-1]
+		if extra == 1:
+			message = message[:-1]
+		elif extra == 2:
+			message = message[:-2]
+		elif extra == 3:
+			message = message[:-3]
+		elif extra == 4:
+			message = message[:-4]
+		elif extra == 5:
+			message = message[:-5]
+		elif extra == 6:
+			message = message[:-6]
+		elif extra == 7:
+			message = message[:-7]
+		elif extra == 8:
+			message = message[:-8]
+		elif extra == 9:
+			message = message[:-9]
+		elif extra == 10:
+			message = message[:-10]
+		elif extra == 11:
+			message = message[:-11]
+		elif extra == 12:
+			message = message[:-12]
+		elif extra == 13:
+			message = message[:-13]
+		elif extra == 14:
+			message = message[:-14]
+		elif extra == 15:
+			message = message[:-15]
+		elif extra == 0:
+			message = message[:-16]
+		return message
+		
 
 	def KeyExpansion(self):
 		w = []
 		for i in range(self.Nk):
-			w.append(key[4 * i])
-			w.append(key[4 * i + 1])
-			w.append(key[4 * i + 2])
-			w.append(key[4 * i + 3])
+			w.append([self.key[4 * i], self.key[4 * i + 1], self.key[4 * i + 2], self.key[4 * i + 3]])
 
-		for i in range(self.Nb * (self.Nr + 1)):
-			temp = w[i - 1]
+		for i in range(self.Nk, self.Nb * (self.Nr + 1)):
+			temp = w[i-1]
+
 			if i % self.Nk == 0:
-				temp = SubWord(RotWord(temp)) ^ Rcon[i / Nk]
-			elif Nk > 6 and i % Nk == 4:
-				temp = SubWord(temp)
-			w[i] = w[i - self.Nk] ^ temp
+				temp = self.SubWord(self.RotWord(temp))
+				temp[0] = temp[0] ^ self.Rcon[i // self.Nk - 1]
+			elif self.Nk > 6 and i % self.Nk == 4:
+				temp = SubWord()
+
+			w.append([0, 0, 0, 0])
+			for row in range(4):
+				w[i][row] = w[i - self.Nk][row] ^ temp[row]
+
+		all_words = []
+
+		for i in w:
+			for j in i:
+				all_words.append(j)
+
+		return all_words
+
+	def SubWord(self, word):
+		post_s = []
+		for b in word:
+			post_s.append(self.S[b >> 4][b & 0x0F])
+
+		return post_s
+
+	def RotWord(self, word):
+		return word[1:] + word[:1]
 
 
 	def cipher(self, message, w):
-		# [row][column]
+		state = []
+		for row in range(4):
+			state.append([])
+
+		for i in range(len(message)):
+			state[i % 4].append(message[i])
+				
+		state = self.AddRoundKey(state, self.make_2d_list(w, 0, 4 * self.Nb))
+
+		for rounds in range(self.Nr - 1):
+			state = self.SubBytes(state)
+			state = self.ShiftRows(state)
+			state = self.MixColumns(state)
+			state = self.AddRoundKey(state, self.make_2d_list(w, 4 * (rounds + 1) * self.Nb, 4 * (rounds + 2) * (self.Nb)))
+
+		state = self.SubBytes(state)
+		state = self.ShiftRows(state)
+		state = self.AddRoundKey(state, self.make_2d_list(w, 4 * self.Nr * self.Nb, 4 * (self.Nr + 1) * (self.Nb)))
+
+		self.print(state)
+
+		cipher_text = []
+
+		for column in range(self.Nb):
+			for row in range(4):
+				cipher_text.append(state[row][column])
+
+		return cipher_text
+
+	def plain(self, message, w):
 		state = []
 		for row in range(4):
 			state.append([])
@@ -138,34 +242,36 @@ class AES:
 		for i in range(len(message)):
 			state[i % 4].append(message[i])
 
-		# DEBUG 
-		self.print(state)
-		# DEBUG
-				
-		state = self.AddRoundKey(state, self.make_2d_list(w, 0, 4*self.Nb))
+		state = self.AddRoundKey(state, self.make_2d_list(w, 4 * self.Nr * self.Nb, 4 * (self.Nr + 1) * (self.Nb)))
 
-		# DEBUG
-		print("START OF ROUND")
-		self.print(state)
-		# DEBUG
+		for rounds in range(self.Nr - 1, 0, -1): # Goes from Nr - 1 to 1
+			state = self.InvShiftRows(state)
+			state = self.InvSubBytes(state)
+			state = self.AddRoundKey(state, self.make_2d_list(w, 4 * (rounds) * self.Nb, 4 * (rounds + 1) * (self.Nb)))
+			state = self.InvMixColumns(state)
 
-		for rounds in range(self.Nr - 1):
-			state = self.SubBytes(state)
-			print("SUBBYTES")
-			self.print(state)
-			state = self.ShiftRows(state)
-			print("SHIFTROWS")
-			self.print(state)
-			state = self.MixColumns(state)
-			print("MIXCOLUMNS")
-			self.print(state)
-			break
+
+		state = self.InvShiftRows(state)
+		state = self.InvSubBytes(state)
+		state = self.AddRoundKey(state, self.make_2d_list(w, 0, 4 * self.Nb))
+
+		print()
+		self.print(state)
+
+		plain_text = []
+
+		for column in range(self.Nb):
+			for row in range(4):
+				plain_text.append(state[row][column])
+
+		return plain_text
+
 
 	def print(self, state):
+		print()
 		for row in range(4):
 			for column in range(self.Nb):
-				print(hex(state[row][column]), end=' ')
-
+				print(hex(state[row][column]), end='\t')
 			print()
 
 	def make_2d_list(self, w, start, end):
@@ -182,7 +288,6 @@ class AES:
 		for row in range(4):
 			for column in range(self.Nb):
 				state[row][column] = int(hex(state[row][column] ^ w[row][column]), 16)
-
 		return state
 
 	def SubBytes(self, state):
@@ -193,8 +298,19 @@ class AES:
 
 		for column in range(self.Nb):
 			for row in range(4):
-				b[row % 4].append(self.S[(state[row][column] >> 4)][(state[row][column] & 0x0F)])
+				b[row % 4].append(self.S[(state[row][column] >> 4) % 16][(state[row][column] & 0x0F)])
 
+		return b
+
+	def InvSubBytes(self, state):
+		b = []
+
+		for row in range(4):
+			b.append([])
+
+		for column in range(self.Nb):
+			for row in range(4):
+				b[row % 4].append(self.Si[(state[row][column] >> 4) % 16][(state[row][column] & 0x0F)])
 
 		return b
 
@@ -205,6 +321,16 @@ class AES:
 		state[2] = state[2][2:] + state[2][:2]
 		# Fourth row
 		state[3] = state[3][3:] + state[3][:3]
+
+		return state
+
+	def InvShiftRows(self, state):
+		# Second row
+		state[1] = state[1][3:] + state[1][:3]
+		# Third row
+		state[2] = state[2][2:] + state[2][:2]
+		# Forth row
+		state[3] = state[3][1:] + state[3][:1]
 
 		return state
 
@@ -236,44 +362,58 @@ class AES:
 
 		return s
 
+	def InvMixColumns(self, state):
+		s = []
+		for row in range(4):
+			s.append([])
+
+		for c in range(self.Nb): # c = column
+			# s'[0][c] = ({0e} * s[0][c]) ^ ({0b} * s[1][c]) ^ ({0d} * s[2][c]) ^ ({09} * s[3][c])
+			s[0].append(self.xtime_0e(state[0][c]) ^ self.xtime_0b(state[1][c]) ^ self.xtime_0d(state[2][c]) ^ self.xtime_09(state[3][c]))
+
+			# s'[1][c] = ({09} * s[0][c]) ^ ({0e} * s[1][c]) ^ ({0b} * s[2][c]) ^ ({0d} * s[3][c])
+			s[1].append(self.xtime_09(state[0][c]) ^ self.xtime_0e(state[1][c]) ^ self.xtime_0b(state[2][c]) ^ self.xtime_0d(state[3][c]))
+
+			# s'[2][c] = ({0d} * s[0][c]) ^ ({09} * s[1][c]) ^ ({0e} * s[2][c]) ^ ({0b} * s[3][c])
+			s[2].append(self.xtime_0d(state[0][c]) ^ self.xtime_09(state[1][c]) ^ self.xtime_0e(state[2][c]) ^ self.xtime_0b(state[3][c]))
+
+			# s'[3][c] = ({0b} * s[0][c]) ^ ({0d} * s[1][c]) ^ ({09} * s[2][c]) ^ ({0e} * s[3][c])
+			s[3].append(self.xtime_0b(state[0][c]) ^ self.xtime_0d(state[1][c]) ^ self.xtime_09(state[2][c]) ^ self.xtime_0e(state[3][c]))
+
+		return s
+
 	def xtime(self, h):
-		if(h > 128):
+		if(h > 127):
 			return ((h << 1) % 256) ^ int('00011011', 2)
 		return (h << 1)
 
-		'''
-		if type(message) is str:
-			try:
-				message = int(message, 16)
-			except:
-				message = string_to_bytes(message)
+	def xtime_0e(self, h): 	# 0e = 08 + 04 + 02
+		h_02 = self.xtime(h)
+		h_04 = self.xtime(h_02)
+		h_08 = self.xtime(h_04)
 
-		print(hex(message))
-		'''
+		return h_02 ^ h_04 ^ h_08
 
-		'''
-		message = bin(int(message, 16))[2:].zfill(8)
-		print(message)
-		print(message > 1)
-		print(type(message))
+	def xtime_0b(self, h):	# 0b = 08 + 02 + 01
+		h_02 = self.xtime(h)
+		h_04 = self.xtime(h_02)
+		h_08 = self.xtime(h_04)
 
-		pad = message % 128
-		padding = b''
+		return h ^ h_02 ^ h_08
 
-		for i in range(pad):
-			padding += b''
+	def xtime_0d(self, h):	# 0d = 08 + 04 + 01
+		h_02 = self.xtime(h)
+		h_04 = self.xtime(h_02)
+		h_08 = self.xtime(h_04)
 
-		message += padding
+		return h ^ h_04 ^ h_08
 
-		print(message)
-		'''
+	def xtime_09(self, h):	# 09 = 08 + 01
+		h_02 = self.xtime(h)
+		h_04 = self.xtime(h_02)
+		h_08 = self.xtime(h_04)
 
-
-
-	def sub_bytes(state):
-		pass
-
-
+		return h ^ h_08
 
 
 
