@@ -112,6 +112,23 @@ class AES:
 		w = []
 		self.cipher(message, self.key)
 
+	def KeyExpansion(self):
+		w = []
+		for i in range(self.Nk):
+			w.append(key[4 * i])
+			w.append(key[4 * i + 1])
+			w.append(key[4 * i + 2])
+			w.append(key[4 * i + 3])
+
+		for i in range(self.Nb * (self.Nr + 1)):
+			temp = w[i - 1]
+			if i % self.Nk == 0:
+				temp = SubWord(RotWord(temp)) ^ Rcon[i / Nk]
+			elif Nk > 6 and i % Nk == 4:
+				temp = SubWord(temp)
+			w[i] = w[i - self.Nk] ^ temp
+
+
 	def cipher(self, message, w):
 		# [row][column]
 		state = []
@@ -128,13 +145,19 @@ class AES:
 		state = self.AddRoundKey(state, self.make_2d_list(w, 0, 4*self.Nb))
 
 		# DEBUG
+		print("START OF ROUND")
 		self.print(state)
 		# DEBUG
 
 		for rounds in range(self.Nr - 1):
 			state = self.SubBytes(state)
+			print("SUBBYTES")
+			self.print(state)
 			state = self.ShiftRows(state)
+			print("SHIFTROWS")
+			self.print(state)
 			state = self.MixColumns(state)
+			print("MIXCOLUMNS")
 			self.print(state)
 			break
 
@@ -159,8 +182,6 @@ class AES:
 		for row in range(4):
 			for column in range(self.Nb):
 				state[row][column] = int(hex(state[row][column] ^ w[row][column]), 16)
-				print(type(state[row][column]))
-				print(state[row][column])
 
 		return state
 
@@ -186,6 +207,39 @@ class AES:
 		state[3] = state[3][3:] + state[3][:3]
 
 		return state
+
+	def MixColumns(self, state):
+		s = []
+		for row in range(4):
+			s.append([])
+
+		for c in range(self.Nb): # c = column
+			# s'[0][c]
+			s_00 = self.xtime(state[0][c])
+			s_01 = self.xtime(state[1][c]) ^ state[1][c]
+			s[0].append(s_00 ^ s_01 ^ state[2][c] ^ state[3][c])
+			
+			# s'[1][c]
+			s_11 = self.xtime(state[1][c])
+			s_12 = self.xtime(state[2][c]) ^ state[2][c]
+			s[1].append(state[0][c] ^ s_11 ^ s_12 ^ state[3][c])
+
+			# s'[2][c]
+			s_22 = self.xtime(state[2][c])
+			s_23 = self.xtime(state[3][c]) ^ state[3][c]
+			s[2].append(state[0][c] ^ state[1][c] ^ s_22 ^ s_23)
+
+			# s'[3][c]
+			s_33 = self.xtime(state[3][c])
+			s_30 = self.xtime(state[0][c]) ^ state[0][c]
+			s[3].append(s_30 ^ state[1][c] ^ state[2][c] ^ s_33)
+
+		return s
+
+	def xtime(self, h):
+		if(h > 128):
+			return ((h << 1) % 256) ^ int('00011011', 2)
+		return (h << 1)
 
 		'''
 		if type(message) is str:
