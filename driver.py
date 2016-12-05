@@ -4,8 +4,10 @@ import codecs
 
 def main():
 	input_file = 'button.mp3'
-	key = 'abcdefghijklmnop'
-	iv = key
+	key = 'abcdefghijklmnopabcdefgh'
+	iv = 'abcdefghijklmnop'
+
+	print(len(key))
 
 	file = ''
 	with open(input_file, 'rb') as f:
@@ -13,9 +15,9 @@ def main():
 
 	# AES
 	aes = AES(key, iv)
-	e = aes.encrypt(file, 'AES')	
+	e = aes.encrypt(file, 'CBC')	
 
-	d = aes.decrypt(e, 'AES')
+	d = aes.decrypt(e, 'CBC')
 
 	with open(str(input_file) + '.aes', 'wb') as f:
 		f.write(e)
@@ -23,6 +25,7 @@ def main():
 	with open('decrypted.mp3', 'wb') as f:
 		f.write(d)
 
+	print(d == file)
 
 if __name__ == "__main__":
 	main()

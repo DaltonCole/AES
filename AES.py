@@ -71,6 +71,8 @@ class AES:
 		self.key = string_to_bytes(key)
 		if iv is not None:
 			self.iv = string_to_bytes(iv)
+			if len(iv) != 16:
+				raise ValueError('Invalid IV size')
 
 		self.Nb = 4			# Number of Columns
 
@@ -81,6 +83,12 @@ class AES:
 		if self.bit_size == 16:
 			self.Nk = 4		# 4 32-bit words for key
 			self.Nr = 10	# 10 rounds for 128 bit key size
+		elif self.bit_size == 24:	# 196 bit
+			self.Nk = 6
+			self.Nr = 12
+		elif self.bit_size == 32:	# 256 bit
+			self.Nk = 8
+			self.Nr = 14
 
 	def encrypt(self, message, mode='ECB'):
 		message = string_to_bytes(message)
@@ -90,7 +98,7 @@ class AES:
 
 		cipher_text = bytes()
 		for bits_128 in range(0, len(message), 16):	
-			if mode == 'AES':
+			if mode == 'CBC':
 				if bits_128 == 0:
 					for i in range(16):
 						message[i] = message[i] ^ self.iv[i]
@@ -112,7 +120,7 @@ class AES:
 
 		plain_text = bytes()
 		for bits_128 in range(0, len(cipher_text), 16):
-			if mode == 'AES':
+			if mode == 'CBC':
 				plain_block = self.plain(cipher_text[bits_128: (bits_128 + 16)], w)
 				if bits_128 == 0:
 					for i in range(16):
@@ -216,8 +224,8 @@ class AES:
 			if i % self.Nk == 0:
 				temp = self.SubWord(self.RotWord(temp))
 				temp[0] = temp[0] ^ self.Rcon[i // self.Nk - 1]
-			elif self.Nk > 6 and i % self.Nk == 4:
-				temp = SubWord()
+			elif self.Nk > 6 and i % self.Nk == 4:	# 256
+				temp = self.SubWord(temp)
 
 			w.append([0, 0, 0, 0])
 			for row in range(4):
