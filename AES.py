@@ -1,9 +1,30 @@
 
+'''
 def string_to_bytes(text):
+	#print(text)
+	#print(type(text))
+
+	#text = text.decode('utf-8')
 	return list(ord(c) for c in text)
 
 def bytes_to_string(binary):
 	return "".join(chr(b) for b in binary)
+'''
+def string_to_bytes(text):
+	if isinstance(text, bytes):
+		#return text
+		b = bytearray()
+		for i in text:
+			b.append(i)
+		l = []
+		for i in b:
+			l.append((i))
+		return l
+	return [ord(c) for c in text]
+
+# In Python 3, we return bytes
+def bytes_to_string(binary):
+	return bytes(binary)
 
 class AES:
 	# S-box
@@ -45,46 +66,63 @@ class AES:
 	# Round constant words
 	Rcon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91]
 
-	def __init__(self, key, bit_size = 128):
-		self.bit_size = bit_size
+	def __init__(self, key,  iv = None):
+		self.bit_size = len(key)
 		self.key = string_to_bytes(key)
+		if iv is not None:
+			self.iv = string_to_bytes(iv)
 
 		self.Nb = 4			# Number of Columns
 
 		if len(self.key) != 16 and len(self.key) != 24 and len(self.key) != 32:
 			 raise ValueError('Invalid key size')
 
-		if bit_size == 128:
+		# 128 bit
+		if self.bit_size == 16:
 			self.Nk = 4		# 4 32-bit words for key
 			self.Nr = 10	# 10 rounds for 128 bit key size
 
-	def encrypt(self, message):
-		print(len(message))
+	def encrypt(self, message, mode='ECB'):
 		message = string_to_bytes(message)
-		print(len(message))
-		print(type(message))
-		print(message)
 
 		w = self.KeyExpansion()
 		message = self.pad(message)
-		print(len(message))
-		print(message)
 
-		cipher_text = ''
-		for bits_128 in range(0, len(message), 16):			
-			cipher_text += bytes_to_string(self.cipher(message[bits_128: (bits_128 + 16)], w))
+		cipher_text = bytes()
+		for bits_128 in range(0, len(message), 16):	
+			if mode == 'AES':
+				if bits_128 == 0:
+					for i in range(16):
+						message[i] = message[i] ^ self.iv[i]
+				else:
+					for i in range(16):
+						message[bits_128 + i] = message[bits_128 + i] ^ cipher_block[i]
+				cipher_block = self.cipher(message[bits_128: (bits_128 + 16)], w)
+				cipher_text += bytes_to_string(cipher_block)
+			else:		
+				cipher_text += bytes_to_string(self.cipher(message[bits_128: (bits_128 + 16)], w))
 
 		return cipher_text
 
 
-	def decrypt(self, cipher_text):
+	def decrypt(self, cipher_text, mode='ECB'):
 		cipher_text = string_to_bytes(cipher_text)
 
 		w = self.KeyExpansion()
 
-		plain_text = ''
+		plain_text = bytes()
 		for bits_128 in range(0, len(cipher_text), 16):
-			plain_text += bytes_to_string(self.plain(cipher_text[bits_128: (bits_128 + 16)], w)) 
+			if mode == 'AES':
+				plain_block = self.plain(cipher_text[bits_128: (bits_128 + 16)], w)
+				if bits_128 == 0:
+					for i in range(16):
+						plain_block[i] = plain_block[i] ^ self.iv[i]
+				else:
+					for i in range(16):
+						plain_block[i] = plain_block[i] ^ cipher_text[bits_128 - 16 + i]
+				plain_text += bytes_to_string(plain_block)
+			else:
+				plain_text += bytes_to_string(self.plain(cipher_text[bits_128: (bits_128 + 16)], w)) 
 
 		plain_text = self.unpad(plain_text)
 
@@ -224,8 +262,6 @@ class AES:
 		state = self.ShiftRows(state)
 		state = self.AddRoundKey(state, self.make_2d_list(w, 4 * self.Nr * self.Nb, 4 * (self.Nr + 1) * (self.Nb)))
 
-		self.print(state)
-
 		cipher_text = []
 
 		for column in range(self.Nb):
@@ -255,9 +291,6 @@ class AES:
 		state = self.InvSubBytes(state)
 		state = self.AddRoundKey(state, self.make_2d_list(w, 0, 4 * self.Nb))
 
-		print()
-		self.print(state)
-
 		plain_text = []
 
 		for column in range(self.Nb):
@@ -265,7 +298,6 @@ class AES:
 				plain_text.append(state[row][column])
 
 		return plain_text
-
 
 	def print(self, state):
 		print()
