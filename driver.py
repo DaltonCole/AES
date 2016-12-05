@@ -1,10 +1,10 @@
 from AES import * 
-import codecs
-
+import os
 
 def main():
 	input_file = input("What file would you like to encrypt?: ")
 	file = ''
+	filename, file_extension = os.path.splitext(input_file)
 	with open(input_file, 'rb') as f:
 		file = f.read()
 
@@ -37,7 +37,7 @@ def main():
 	# Save cipher and plain text to files
 	with open('encryped.aes', 'wb') as f:
 		f.write(e)
-	with open('decrypted.mp3', 'wb') as f:
+	with open('decrypted' + str(file_extension), 'wb') as f:
 		f.write(d)
 
 	print("Original equals decyrpted: ")
