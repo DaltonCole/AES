@@ -1,15 +1,3 @@
-
-'''
-def string_to_bytes(text):
-	#print(text)
-	#print(type(text))
-
-	#text = text.decode('utf-8')
-	return list(ord(c) for c in text)
-
-def bytes_to_string(binary):
-	return "".join(chr(b) for b in binary)
-'''
 def string_to_bytes(text):
 	if isinstance(text, bytes):
 		#return text
@@ -67,71 +55,146 @@ class AES:
 	Rcon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91]
 
 	def __init__(self, key,  iv = None):
+		"""Constructor for AES
+
+		Sets:
+			bit_size	=	Number of bytes in key
+			key 		=	key paramater
+			iv 			= 	iv paramater
+			Nb 			=	Number of columns
+			Nk 			=	Number of 32 bit words, 4 for 128 bit key, 6 for 196, 8 for 256
+			Nr 			=	Number of rounds, 10 for 128 bit key, 12 for 196, 14 for 256
+
+			:param str key: encryption key
+
+			:param str iv: initialization vector
+
+			Errors:
+				*	If iv is not 128 bits, ValueError is raised
+				*	If key is not 128, 196, nor 256 bits, ValueError is raised
+
+			:return None
+		"""
+		# Number of bytes in key
 		self.bit_size = len(key)
+		# Change key to a list of bytes
 		self.key = string_to_bytes(key)
+
+		# Set iv is one is provided
 		if iv is not None:
 			self.iv = string_to_bytes(iv)
+			# If iv is not 128 bits, raise error
 			if len(iv) != 16:
 				raise ValueError('Invalid IV size')
 
-		self.Nb = 4			# Number of Columns
+		# Number of Columns
+		self.Nb = 4			
 
+		# If key is not 128 bits, 196, nor 256, raise error
 		if len(self.key) != 16 and len(self.key) != 24 and len(self.key) != 32:
 			 raise ValueError('Invalid key size')
 
-		# 128 bit
-		if self.bit_size == 16:
-			self.Nk = 4		# 4 32-bit words for key
-			self.Nr = 10	# 10 rounds for 128 bit key size
+		if self.bit_size == 16:		# 128 bit
+			self.Nk = 4					# 4 32-bit words for Cipher Key
+			self.Nr = 10				# 10 rounds
 		elif self.bit_size == 24:	# 196 bit
-			self.Nk = 6
-			self.Nr = 12
+			self.Nk = 6					# 6 32-bit words for Cipher Key
+			self.Nr = 12				# 12 rounds
 		elif self.bit_size == 32:	# 256 bit
-			self.Nk = 8
-			self.Nr = 14
+			self.Nk = 8					# 8 32-bit words for Cipher Key
+			self.Nr = 14				# 14 rounds
 
 	def encrypt(self, message, mode='ECB'):
+		"""Encrypts the plain text from message
+
+		:param byte string message: Message to be encrypted
+
+		:param string mode:	Mode to encrypt message in 
+			Mode is either:
+				* 'ECB' = Electronic Code Book
+				* 'CBC' = Cipher Block Chaining
+
+		:return: Cipher text after AES encryption in the specified mode
+
+		:rtype: Byte string
+		"""
+		# Convert message to a list of bytes
 		message = string_to_bytes(message)
 
+		# Expand the key
 		w = self.KeyExpansion()
+
+		# Pad message using RKCS#7
 		message = self.pad(message)
 
+		# Initialize cipher_text
 		cipher_text = bytes()
+
+		# Increment over every 128 bits in message
 		for bits_128 in range(0, len(message), 16):	
+			# If CBC mode
 			if mode == 'CBC':
+				# XOR message with IV first round
 				if bits_128 == 0:
 					for i in range(16):
 						message[i] = message[i] ^ self.iv[i]
 				else:
+					# XOR with message with preious cipher block
 					for i in range(16):
 						message[bits_128 + i] = message[bits_128 + i] ^ cipher_block[i]
+				# Encrypt
 				cipher_block = self.cipher(message[bits_128: (bits_128 + 16)], w)
 				cipher_text += bytes_to_string(cipher_block)
-			else:		
+			# ECB mode
+			elif mode == 'ECB':	
+				# Encrypt	
 				cipher_text += bytes_to_string(self.cipher(message[bits_128: (bits_128 + 16)], w))
 
 		return cipher_text
 
 
 	def decrypt(self, cipher_text, mode='ECB'):
+		"""Decrypts the cipher_text into plain text
+
+		:param byte string cipher_text: cipher text to be converted to plain text
+
+		:param string mode:	Mode to encrypt message in 
+			Mode is either:
+				* 'ECB' = Electronic Code Book
+				* 'CBC' = Cipher Block Chaining
+
+		:return: Plaintext
+
+		:rtype: Byte string
+		"""
+		# Convert cipher_text into a list of bytes
 		cipher_text = string_to_bytes(cipher_text)
 
+		# Expand the key
 		w = self.KeyExpansion()
 
+		# Initialize plain text
 		plain_text = bytes()
+		# Increment over every 128 bits in message
 		for bits_128 in range(0, len(cipher_text), 16):
+			# If CBC mode
 			if mode == 'CBC':
+				# Decrypt
 				plain_block = self.plain(cipher_text[bits_128: (bits_128 + 16)], w)
+				# XOR plain block with iv for first round
 				if bits_128 == 0:
 					for i in range(16):
 						plain_block[i] = plain_block[i] ^ self.iv[i]
 				else:
+					# XOR plain block with previous cipher block
 					for i in range(16):
 						plain_block[i] = plain_block[i] ^ cipher_text[bits_128 - 16 + i]
+				# Add block to plain text
 				plain_text += bytes_to_string(plain_block)
 			else:
 				plain_text += bytes_to_string(self.plain(cipher_text[bits_128: (bits_128 + 16)], w)) 
 
+		# Unpad plain text using RKCS#7
 		plain_text = self.unpad(plain_text)
 
 		return plain_text
@@ -139,12 +202,26 @@ class AES:
 	# Padding is implemented using RKCS#7 as described in this post:
 	# https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS7
 	def pad(self, message):
+		"""Pad the message such that it is a multiple of 128 bits
+
+		Padding is implemented using RKCS#7 as described here:
+		https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS7
+
+		:param string message: Message to be padded
+
+		:return: Padded message
+
+		:rtype: list of bytes
+		"""
+		# Find the amound of padding that is needed
 		extra = 16 - (len(message) % 16)
+
+		# Pad the end of the message such that the value of the padding equals the amound of padding
 		if extra == 0:
-			# If message is a multiple of 128 bits, pad with a block of f to indicate padding
+			# If message is a multiple of 128 bits, pad with a block of 0 to indicate padding
 			message += [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 		elif extra == 1:
-			# Padd with the padding value
+			# Pad with the padding value
 			message += [1]
 		elif extra == 2:
 			message += [2, 2]
@@ -177,7 +254,21 @@ class AES:
 		return message
 
 	def unpad(self, message):
+		"""Unpad the message such that it is the size of the original message
+
+		Padding is implemented using RKCS#7 as described here:
+		https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS7
+
+		:param string message: Message to be unpadded
+
+		:return: Unpadded message
+
+		:rtype: list of bytes
+		"""
+		# Find the amound of padding that is needed to be removed
 		extra = message[-1]
+
+		# Remove the padding
 		if extra == 1:
 			message = message[:-1]
 		elif extra == 2:
@@ -214,25 +305,40 @@ class AES:
 		
 
 	def KeyExpansion(self):
+		"""Expand the key according to AES standards
+
+		:return: The expanded key
+
+		:rtype: List of bytes
+		"""
+		# Initialize the word list
 		w = []
+
+		# Set the first word to the first four key bytes
 		for i in range(self.Nk):
 			w.append([self.key[4 * i], self.key[4 * i + 1], self.key[4 * i + 2], self.key[4 * i + 3]])
 
+		# Fill w so there will be a new word list for every round
 		for i in range(self.Nk, self.Nb * (self.Nr + 1)):
+			# Set temp to previous word
 			temp = w[i-1]
 
+			# Every Nk rounds
 			if i % self.Nk == 0:
+				# Mix up temp
 				temp = self.SubWord(self.RotWord(temp))
 				temp[0] = temp[0] ^ self.Rcon[i // self.Nk - 1]
-			elif self.Nk > 6 and i % self.Nk == 4:	# 256
+			# When key size is 256 bit and  i - 4 is a multiple of Nk
+			elif self.Nk > 6 and i % self.Nk == 4:	
 				temp = self.SubWord(temp)
 
+			# XOR current word with the Nk preivous word
 			w.append([0, 0, 0, 0])
 			for row in range(4):
 				w[i][row] = w[i - self.Nk][row] ^ temp[row]
 
+		# Convert word to a list of bytes
 		all_words = []
-
 		for i in w:
 			for j in i:
 				all_words.append(j)
@@ -240,17 +346,47 @@ class AES:
 		return all_words
 
 	def SubWord(self, word):
+		"""Uses the S-box on the extended key algorithm
+
+		:param list of bytes word: Word to apply s-box on
+
+		:return: Word after applying s-box to it
+
+		:rtype: List of bytes
+		"""
+		# Initialize word
 		post_s = []
 		for b in word:
+			# For each word, apply s-box
 			post_s.append(self.S[b >> 4][b & 0x0F])
 
 		return post_s
 
 	def RotWord(self, word):
+		"""Rotate word such that [a0, a1, a2, a3] = [a1, a2, a3, a0]
+
+		:param list of bytes word: Word to rotate
+
+		:return: Rotated word
+
+		:rtype: List of bytes
+		"""
+		# Rotate word such that a0 is not at the end
 		return word[1:] + word[:1]
 
 
 	def cipher(self, message, w):
+		"""Cipher to encode a single block with
+
+		:param lists of bytes message: Message to encode
+
+		:param list of bytes w: Extended key to encrypt with
+
+		:return: Encrypted message block
+
+		:rtype: List of bytes
+		"""
+		# Initialize byte matrix to message
 		state = []
 		for row in range(4):
 			state.append([])
@@ -258,20 +394,28 @@ class AES:
 		for i in range(len(message)):
 			state[i % 4].append(message[i])
 				
+		# Apply round key to state
 		state = self.AddRoundKey(state, self.make_2d_list(w, 0, 4 * self.Nb))
 
+		# For Nr - 1 rounds
 		for rounds in range(self.Nr - 1):
+			# SubBytes
 			state = self.SubBytes(state)
+			# ShiftRows
 			state = self.ShiftRows(state)
+			# MixColumns
 			state = self.MixColumns(state)
+			# AddRoundKey, tranform part of w into a matrix
 			state = self.AddRoundKey(state, self.make_2d_list(w, 4 * (rounds + 1) * self.Nb, 4 * (rounds + 2) * (self.Nb)))
 
+		# For last round, do not do mix columns
 		state = self.SubBytes(state)
 		state = self.ShiftRows(state)
 		state = self.AddRoundKey(state, self.make_2d_list(w, 4 * self.Nr * self.Nb, 4 * (self.Nr + 1) * (self.Nb)))
 
+		# Initialize cipher text
 		cipher_text = []
-
+		# Turn state into a list of bytes
 		for column in range(self.Nb):
 			for row in range(4):
 				cipher_text.append(state[row][column])
@@ -279,6 +423,17 @@ class AES:
 		return cipher_text
 
 	def plain(self, message, w):
+		"""Decode an encoded cipher block
+
+		:param lists of bytes message: Message to decode
+
+		:param list of bytes w: Extended key to decrypt with
+
+		:return: Decrypted message block
+
+		:rtype: List of bytes
+		"""
+		# Initialize byte matrix to message
 		state = []
 		for row in range(4):
 			state.append([])
@@ -286,21 +441,28 @@ class AES:
 		for i in range(len(message)):
 			state[i % 4].append(message[i])
 
+		# Apply round key
 		state = self.AddRoundKey(state, self.make_2d_list(w, 4 * self.Nr * self.Nb, 4 * (self.Nr + 1) * (self.Nb)))
 
+		# For Nr - 1 rounds
 		for rounds in range(self.Nr - 1, 0, -1): # Goes from Nr - 1 to 1
+			# Inverse ShiftRows
 			state = self.InvShiftRows(state)
+			# Inverse SubBytes
 			state = self.InvSubBytes(state)
+			# AddRoundKey, tranform part of w into a matrix
 			state = self.AddRoundKey(state, self.make_2d_list(w, 4 * (rounds) * self.Nb, 4 * (rounds + 1) * (self.Nb)))
+			# Inverse MixColumns
 			state = self.InvMixColumns(state)
 
-
+		# Do not inverse columns last round
 		state = self.InvShiftRows(state)
 		state = self.InvSubBytes(state)
 		state = self.AddRoundKey(state, self.make_2d_list(w, 0, 4 * self.Nb))
 
+		# Initialize plain text
 		plain_text = []
-
+		# Transform state into a list of bytes
 		for column in range(self.Nb):
 			for row in range(4):
 				plain_text.append(state[row][column])
@@ -308,6 +470,12 @@ class AES:
 		return plain_text
 
 	def print(self, state):
+		"""Prints a matrix
+
+		:param list of lists of bytes state: Matrix to print
+
+		:return: None
+		"""
 		print()
 		for row in range(4):
 			for column in range(self.Nb):
@@ -315,6 +483,19 @@ class AES:
 			print()
 
 	def make_2d_list(self, w, start, end):
+		"""Makes a matrix from w
+
+		:param list of bytes w: Extended key to make a matrix from
+
+		:param int start: Starting index in w for matrix
+
+		:param int end: Ending index in w for matrix
+			End should be s + 16
+
+		:return: Matrix made from w[start] to w[end]
+
+		:rtype: List of list of bytes
+		"""
 		d2 = []
 		for row in range(4):
 			d2.append([])
@@ -325,36 +506,77 @@ class AES:
 		return d2
 
 	def AddRoundKey(self, state, w):
+		"""AddRoundKey as specified in AES. XORs state with coresponding w
+
+		:param list of list of bytes state: Matrix to XOR with w
+
+		:param list of list of bytes w: Matrix to XOR with state
+
+		:return: Matrix = state[i][j] ^ w[i][j]
+
+		:rtype: List of list of bytes
+		"""
 		for row in range(4):
 			for column in range(self.Nb):
 				state[row][column] = int(hex(state[row][column] ^ w[row][column]), 16)
 		return state
 
 	def SubBytes(self, state):
-		b = []
+		"""SubBytes as specified in AES. Subsitutes byte with corresponding value in S-table
 
+		:param list of list of bytes state: State matrix
+
+		:return: Matrix after applying SubBytes to it
+
+		:rtype: List of list of bytes
+		"""
+		# Initalize matrix
+		b = []
 		for row in range(4):
 			b.append([])
 
+		# For each element in matrix
 		for column in range(self.Nb):
 			for row in range(4):
+				# Subsitutes byte with corresponding value in S-table
 				b[row % 4].append(self.S[(state[row][column] >> 4) % 16][(state[row][column] & 0x0F)])
 
 		return b
 
 	def InvSubBytes(self, state):
-		b = []
+		"""InvSubBytes as specified in AES. Subsitutes byte with corresponding value in Si-table
 
+		:param list of list of bytes state: State matrix
+
+		:return: Matrix after applying InvSubBytes to it
+
+		:rtype: List of list of bytes
+		"""
+		# Initalize matrix
+		b = []
 		for row in range(4):
 			b.append([])
 
+		# For each element in matrix
 		for column in range(self.Nb):
 			for row in range(4):
+				# Subsitute byte with corresponding value in Si-table
 				b[row % 4].append(self.Si[(state[row][column] >> 4) % 16][(state[row][column] & 0x0F)])
 
 		return b
 
 	def ShiftRows(self, state):
+		"""ShiftRows as specified in AES. 
+			Shifts row1 left by 1
+			Shifts row2 left by 2
+			Shifts row3 left by 3
+
+		:param list of list of bytes state: State matrix
+
+		:return: Matrix after applying ShiftRows to it
+
+		:rtype: List of list of bytes
+		"""
 		# Second row
 		state[1] = state[1][1:] + state[1][:1]
 		# Third row
@@ -365,6 +587,17 @@ class AES:
 		return state
 
 	def InvShiftRows(self, state):
+		"""ShiftRows as specified in AES. 
+			Shifts row1 right by 1
+			Shifts row2 right by 2
+			Shifts row3 right by 3
+
+		:param list of list of bytes state: State matrix
+
+		:return: Matrix after applying InvShiftRows to it
+
+		:rtype: List of list of bytes
+		"""
 		# Second row
 		state[1] = state[1][3:] + state[1][:3]
 		# Third row
@@ -375,10 +608,24 @@ class AES:
 		return state
 
 	def MixColumns(self, state):
+		"""MixColumns as specified in AES. 
+			s[0][c] = ({02} * s[0][c]) ^ ({03} * s[1][c]) ^ s[2][c] ^ s[3][c]
+			s[1][c] = s[0][c] ^ ({02} * s[1][c]) ^ ({03} * s[2][c]) ^ s[3][c]
+			s[2][c] = s[0][c] ^ s[1][c] ^ ({02} * s[2][c]) ^ ({03} * s[3][c])
+			s[3][c] = ({03} * s[0][c]) ^ s[1][c] ^ s[2][c] ^ ({02} * s[3][c])
+
+		:param list of list of bytes state: State matrix
+
+		:return: Matrix after applying MixColumns to it
+
+		:rtype: List of list of bytes
+		"""
+		# Initalize matrix
 		s = []
 		for row in range(4):
 			s.append([])
 
+		# For each columns
 		for c in range(self.Nb): # c = column
 			# s'[0][c]
 			s_00 = self.xtime(state[0][c])
@@ -403,10 +650,24 @@ class AES:
 		return s
 
 	def InvMixColumns(self, state):
+		"""MixColumns as specified in AES. 
+			s[0][c] = ({0e} * s[0][c]) ^ ({0b} * s[1][c]) ^ ({0d} * s[2][c]) ^ ({09} * s[3][c])
+			s[1][c] = ({09} * s[0][c]) ^ ({0e} * s[1][c]) ^ ({0b} * s[2][c]) ^ ({0d} * s[3][c])
+			s[2][c] = ({0d} * s[0][c]) ^ ({09} * s[1][c]) ^ ({0e} * s[2][c]) ^ ({0b} * s[3][c])
+			s[3][c] = ({0b} * s[0][c]) ^ ({0d} * s[1][c]) ^ ({09} * s[2][c]) ^ ({0e} * s[3][c])
+
+		:param list of list of bytes state: State matrix
+
+		:return: Matrix after applying InvMixColumns to it
+
+		:rtype: List of list of bytes
+		"""
+		# Initalize matrix
 		s = []
 		for row in range(4):
 			s.append([])
 
+		# For each columns
 		for c in range(self.Nb): # c = column
 			# s'[0][c] = ({0e} * s[0][c]) ^ ({0b} * s[1][c]) ^ ({0d} * s[2][c]) ^ ({09} * s[3][c])
 			s[0].append(self.xtime_0e(state[0][c]) ^ self.xtime_0b(state[1][c]) ^ self.xtime_0d(state[2][c]) ^ self.xtime_09(state[3][c]))
@@ -423,46 +684,75 @@ class AES:
 		return s
 
 	def xtime(self, h):
+		"""Applies xtime to the given byte
+			Multiplies polynomial modulo an irreducible polynomial m(x)
+				m(x) = x^8 + x^4 + x^3 + x + 1
+
+		:param byte h: Byte to be multiplied by 2
+
+		:return: h polynomial multiplied by 2 mod m(x)
+		
+		:rtype: Byte
+		"""
+		# If is > 127
 		if(h > 127):
+			# Left shift and apply a conditional bitwise XOR with {1b}
 			return ((h << 1) % 256) ^ int('00011011', 2)
+		# Left shift by 1
 		return (h << 1)
 
-	def xtime_0e(self, h): 	# 0e = 08 + 04 + 02
+	def xtime_0e(self, h): 
+		"""Applies xtime until h * {0e} is achived
+			0e = 08 + 04 + 02
+
+		:param byte h: Byte to be multiplied by {0e}
+
+		:rtype: Byte
+		"""
 		h_02 = self.xtime(h)
 		h_04 = self.xtime(h_02)
 		h_08 = self.xtime(h_04)
 
 		return h_02 ^ h_04 ^ h_08
 
-	def xtime_0b(self, h):	# 0b = 08 + 02 + 01
+	def xtime_0b(self, h):
+		"""Applies xtime until h * {0b} is achived
+			0b = 08 + 02 + 01
+
+		:param byte h: Byte to be multiplied by {0b}
+
+		:rtype: Byte
+		"""
 		h_02 = self.xtime(h)
 		h_04 = self.xtime(h_02)
 		h_08 = self.xtime(h_04)
 
 		return h ^ h_02 ^ h_08
 
-	def xtime_0d(self, h):	# 0d = 08 + 04 + 01
+	def xtime_0d(self, h):
+		"""Applies xtime until h * {0d} is achived
+			0d = 08 + 04 + 01
+
+		:param byte h: Byte to be multiplied by {0d}
+
+		:rtype: Byte
+		"""
 		h_02 = self.xtime(h)
 		h_04 = self.xtime(h_02)
 		h_08 = self.xtime(h_04)
 
 		return h ^ h_04 ^ h_08
 
-	def xtime_09(self, h):	# 09 = 08 + 01
+	def xtime_09(self, h):
+		"""Applies xtime until h * {09} is achived
+			09 = 08 + 01
+
+		:param byte h: Byte to be multiplied by {09}
+
+		:rtype: Byte
+		"""
 		h_02 = self.xtime(h)
 		h_04 = self.xtime(h_02)
 		h_08 = self.xtime(h_04)
 
 		return h ^ h_08
-
-
-
-
-
-
-
-
-
-
-
-
