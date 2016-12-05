@@ -408,7 +408,7 @@ class AES:
 			# AddRoundKey, tranform part of w into a matrix
 			state = self.AddRoundKey(state, self.make_2d_list(w, 4 * (rounds + 1) * self.Nb, 4 * (rounds + 2) * (self.Nb)))
 
-		# For last round, do not do mix columns
+		# For last round, do not mix columns
 		state = self.SubBytes(state)
 		state = self.ShiftRows(state)
 		state = self.AddRoundKey(state, self.make_2d_list(w, 4 * self.Nr * self.Nb, 4 * (self.Nr + 1) * (self.Nb)))

@@ -2,6 +2,7 @@ from AES import *
 import os
 
 def main():
+	# Get user input
 	input_file = input("What file would you like to encrypt?: ")
 	file = ''
 	filename, file_extension = os.path.splitext(input_file)
@@ -24,7 +25,7 @@ def main():
 	if mode == 'CBC':
 		iv = ''
 		while len(iv) != 16:
-			iv = input("Please enter a 16 bit iv")
+			iv = input("Please enter a 16 bit iv: ")
 			if len(iv) != 16:
 				print("Invalid IV size of: " + str(len(iv)))
 
@@ -40,6 +41,7 @@ def main():
 	with open('decrypted' + str(file_extension), 'wb') as f:
 		f.write(d)
 
+	# Check to make sure original equals decrypted
 	print("Original equals decyrpted: ")
 	print(d == file)
 
