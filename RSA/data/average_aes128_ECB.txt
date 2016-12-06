@@ -1,0 +1,3 @@
+Total time: 2.625896692276001
+Number of 128 bit key AES's performed using ECB: 1000
+Average Run time: 0.002625896692276001

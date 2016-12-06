@@ -1,0 +1,3 @@
+Total time: 4.764354228973389
+Number of 128 bit key RSA's performed: 1000
+Average Run time: 0.004764354228973389

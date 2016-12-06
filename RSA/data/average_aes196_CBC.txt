@@ -1,0 +1,3 @@
+Total time: 2.9628052711486816
+Number of 196 bit key AES's performed using CBC: 1000
+Average Run time: 0.002962805271148682
