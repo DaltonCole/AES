@@ -1,0 +1,31 @@
+<h1><b>AES Encrypt/ Decryptor</b></h1>
+<%= form_tag({action: :upload}, multipart: true) do %>
+  <b>Encrypt or Decrypt: </b>
+  <%= radio_button_tag(:type, "Encrypt") %>
+  <%= label_tag(:encrypt, "Encrypt") %>
+  <%= radio_button_tag(:type, "Decrypt") %>
+  <%= label_tag(:decrypt, "Decrypt") %>
+
+  <br>
+  <b>File:</b>
+  <%= file_field_tag "file" %>
+
+  <br>
+  <b>Mode</b>
+  <%= radio_button_tag(:mode, "ECB") %>
+  <%= label_tag(:ecb, "ECB") %>
+  <%= radio_button_tag(:mode, "CBC") %>
+  <%= label_tag(:cbc, "CBC") %>
+
+  <br>
+  <%= label_tag(:key, "Key (128, 192, or 256 bits):") %>
+  <%= text_field_tag(:key) %>
+
+  <br>
+  <%= label_tag(:iv, "IV (128 bits) if using CBC:") %>
+  <%= text_field_tag(:iv) %>
+
+  <br>
+  <%= submit_tag("\Encrypt / Decrypt") %>
+<% end %>
+
