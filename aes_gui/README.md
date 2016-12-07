@@ -1,24 +1,22 @@
-# README
+# AES GUI
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+## To Run
 
-Things you may want to cover:
 
-* Ruby version
+Either:
+* Go to (RECOMMENDED METHOD): 
 
-* System dependencies
+* rails server
+  * Then go to localhost:3000 in your web browser of choice
 
-* Configuration
+## Recquirements for running locally:
 
-* Database creation
+* ruby 2.3.1p112 (2016-04-26 revision 54768) [x86_64-darwin15]
+* Python 3.5.1
+* Rails 5.0.0.1
 
-* Database initialization
 
-* How to run the test suite
+## Notes:
 
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+* You must refresh after each encryption and decryption
+* Spaces are not allowed in file name, key, or IV
