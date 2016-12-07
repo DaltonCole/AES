@@ -3,7 +3,7 @@ import os
 
 def main():
 	# Get user input
-	input_file = input("What file would you like to encrypt?: ")
+	input_file = input("What file would you like to encrypt and then decrypt?: ")
 	file = ''
 	filename, file_extension = os.path.splitext(input_file)
 	with open(input_file, 'rb') as f:
