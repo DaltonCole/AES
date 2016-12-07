@@ -2,9 +2,8 @@
 
 ## To Run
 
-
 Either:
-* Go to (RECOMMENDED METHOD): 
+* Go to (RECOMMENDED METHOD): https://obscure-castle-46174.herokuapp.com/
 
 * rails server
   * Then go to localhost:3000 in your web browser of choice
@@ -20,3 +19,5 @@ Either:
 
 * You must refresh after each encryption and decryption
 * Spaces are not allowed in file name, key, or IV
+
+## Warning messages

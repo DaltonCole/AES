@@ -26,32 +26,30 @@ class AesController < ApplicationController
   	elsif params[:iv] != '' and params[:iv].length != 16
   		flash[:notice] = "Please enter an IV of length 16 characters"
   		redirect_to '/'
-    elsif params[:file].original_filename =~ /\s/
-      flash[:notice] = "No spaces in file name"
-      redirect_to '/'
-    elsif params[:key] =~ /\s/
-      flash[:notice] = "No spaces in key"
-      redirect_to '/'
-    elsif params[:iv] =~ /\s/
-      flash[:notice] = "No spaces in iv"
-      redirect_to '/'
   	else
 	  	uploaded_io = params[:file]
 	  	File.open(Rails.root.join('public', 'uploads', uploaded_io.original_filename), 'wb') do |file|
 	  		file.write(uploaded_io.read)
 	  	end
 
-	  	if !params[:iv].nil?
-	  		result = `python3 lib/assets/aes/driver.py #{params[:type]} #{uploaded_io.original_filename} #{params[:mode]} #{params[:key]} #{params[:iv]}`
-	  	else
-	  		result = `python3 lib/assets/aes/driver.py #{params[:type]} #{uploaded_io.original_filename} #{params[:mode]} #{params[:key]}`
-	  	end
+      File.open(Rails.root.join('public', 'uploads', uploaded_io.original_filename + '.txt'), 'wb') do |file|
+        file.write(params[:type] + "\n")
+        file.write(uploaded_io.original_filename + "\n")
+        file.write(params[:mode] + "\n")
+        file.write(params[:key] + "\n")
+        if !params[:iv].nil?
+          file.write(params[:iv] + "\n")
+        end
+      end
+
+      result = `python3 lib/assets/aes/driver.py < "#{Rails.root.join('public', 'uploads', uploaded_io.original_filename + '.txt')}"`
 
 	  	file = File.read(Rails.root.join('public', 'uploads', uploaded_io.original_filename))
 
-	  	`rm #{Rails.root.join('public', 'uploads', uploaded_io.original_filename)}`
+	  	`rm "#{Rails.root.join('public', 'uploads', uploaded_io.original_filename)}"`
+      `rm "#{Rails.root.join('public', 'uploads', uploaded_io.original_filename + '.txt')}"`
 
-	  	send_data file, :filename => uploaded_io.original_filename
-	end
+	  	send_data file, :filename => params[:output_file]
+    end
   end
 end

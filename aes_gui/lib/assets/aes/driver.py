@@ -2,21 +2,28 @@ from AES import *
 import os
 import sys
 
-"""Argumetns:
+"""Inputs:
 	1. Encrypt or Decrypt
 	2. file
 	3. mode
 	4. key
-	5. iv
+	5 (optional). iv
 """
-eOrD = sys.argv[1]
-file_name = sys.argv[2]
-mode = sys.argv[3]
-key  = sys.argv[4]
+eOrD = input()
+file_name = input()
+mode = input()
+key  = input()
+
 
 iv = None
-if len(sys.argv) == 6:
-	iv = sys.argv[5]
+if mode == 'CBC':
+	iv = input()
+
+print(eOrD)
+print(file_name)
+print(mode)
+print(key)
+print(iv)
 
 file = ''
 with open('public/uploads/' + str(file_name), 'rb') as f:

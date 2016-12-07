@@ -26,6 +26,10 @@
   <%= text_field_tag(:iv) %>
 
   <br>
+  <%= label_tag(:output_file, "Output file name (with extension): ") %>
+  <%= text_field_tag(:output_file) %>
+
+  <br>
   <%= submit_tag("\Encrypt / Decrypt") %>
 <% end %>
 

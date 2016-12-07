@@ -1,4 +1,5 @@
-button.mp3
-CBC
+encrypt
+a.png
+ecb
 abcdefghijklmnopabcdefghijklmnop
-abcdefghijklmnop
+encrypted.png

@@ -14,20 +14,14 @@ AES applies AES encryption on a given byte string
 ## Example
 
 ```
-button.mp3
-CBC
+encrypt
+a.png
+cbc
 abcdefghijklmnopabcdefghijklmnop
 abcdefghijklmnop
+encrypted.png
 ```
 
 # Output
 
-* File containing encrypted text called encrypted.aes
-* File containing the decrypted text called decrypted.<extension>
-* Outputs True if original file equals decrypted file
-
-## Example
-
-```
-True
-```
+* File containing the encrypted or decrypted file
