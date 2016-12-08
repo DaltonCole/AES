@@ -2,6 +2,14 @@
 
 AES applies AES encryption on a given byte string
 
+# To Run
+
+python3 driver.py
+
+# Requirements
+
+Python 3.5.1
+
 # Input
 
 * File to encrypt using AES

@@ -1,2 +1,3 @@
 As can be seen from the "AES RSA comparison.pdf" file, RSA takes significantly longer than AES does with similar key and input sizes.
 RSA takes approximately 2.4 times longer than AES ECB mode and 2.6 times longer than AES CBC mode.
+Oddly, AES ECB mode took 1.08 times longer than AES CBC mode. This is likely just a fluke and was caused by the OS.
