@@ -2,6 +2,14 @@
 
 This folder contains the data involving comparing RSA to AES with similar key sizes.
 
+## AES RSA Comparison.pdf
+
+Comparison data and graphs for RSA and AES
+
+## REPORT.txt
+
+Brief report on RSA vs AES
+
 ## driver.py
 
 This file runs the RSA algorithm on key sizes of 128, 192, and 256 on 1000 different inputs of each size.
@@ -37,3 +45,8 @@ python3 times.py
 ## data/
 
 This directory contains all of the data involving run times of RSA and AES
+
+# Requirements
+
+Python 3.5.1
+pip install rsa
